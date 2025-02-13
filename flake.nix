@@ -1,38 +1,35 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    ags.url = "github:aylur/ags";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    astal = {
+      url = "github:aylur/astal";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, ags }:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      extraPackages = [
-        ags.packages.${system}.battery
-        ags.packages.${system}.tray
-        ags.packages.${system}.hyprland
-        ags.packages.${system}.wireplumber
-      ];
-    in
-    {
-      packages.${system}.default = ags.lib.bundle {
-        inherit pkgs;
-        src = ./.;
-        name = "ags-bar-1.0.1"; # name of executable
-        entry = "app.ts";
-        gtk4 = false;
+  outputs = {
+    self,
+    nixpkgs,
+    astal,
+  }: let
+    system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
+    extraPackages = [
+      astal.packages.${system}.battery
+    ];
+  in {
+    packages.${system}.default = astal.lib.mkLuaPackage {
+      inherit pkgs;
+      name = "ags-bar";
+      src = ./.;
 
-        # additional libraries and executables to add to gjs' runtime
-        extraPackages = extraPackages;
-      };
-
-      devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [
-          (ags.packages.${system}.default.override {
-            extraPackages = extraPackages;
-          })
-        ];
-      };
+      extraPackages =
+        [
+          pkgs.dart-sass
+        ]
+        // extraPackages;
     };
+
+    devShells.${system}.default = astal.devShells.${system}.astal;
+  };
 }
